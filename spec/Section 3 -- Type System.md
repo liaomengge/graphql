@@ -115,6 +115,9 @@ and floating-point values, they are interpreted as an integer input value if
 they have an empty fractional part (ex. `1.0`) and otherwise as floating-point
 input value.
 
+For all types below, with the exception of Non-Null, if the explicit value
+`null` is provided, then then the result of input coercion is `null`.
+
 **Built-in Scalars**
 
 GraphQL provides a basic set of well-defined Scalar types. A GraphQL server
@@ -776,13 +779,26 @@ An input object is never a valid result.
 **Input Coercion**
 
 The input to an input object should be an unordered map, otherwise an error
-should be thrown. The result of the coercion is an unordered map, with an
-entry for each input field, whose key is the name of the input field.
-The value of an entry in the coerced map is the result of input coercing the
-value of the entry in the input with the same key; if the input does not have a
-corresponding entry, the value is the result of coercing null. The input
-coercion above should be performed according to the input coercion rules of the
+should be thrown. This unordered map should not contain any entries with names
+not defined by a field of this input object type, otherwise an error should be
+thrown.
+
+The result of coercion is an environment-specific unordered map or record struct
+defining slots for each field of the input object type.
+
+For each field of the input object type, if the original value has an entry with
+the same name, and the value at that entry is a literal value or a variable
+which was provided a runtime value, an entry is added to the result with the
+name of the field.
+
+The value of that entry in the result is the outcome of input coercing the
+original entry value according to the input coercion rules of the
 type declared by the input field.
+
+Note: there is a potential semantic difference between the input value
+explicitly declaring an input field's value as the value `null` vs having not
+declared the input field at all. GraphQL services may optionally interpret these
+two cases differently if it is advantageous.
 
 #### Input Object type validation
 
@@ -790,7 +806,6 @@ type declared by the input field.
 2. The fields of an Input Object type must have unique names within that
    Input Object type; no two fields may share the same name.
 3. The return types of each defined field must be an Input type.
-
 
 ### Lists
 
@@ -846,42 +861,47 @@ must be raised.
 
 **Input Coercion**
 
+If an argument of a Non-Null type is provided with a literal value other than
+`null`, it is coerced using the input coercion for the wrapped type.
+
+There are a number of ways in which a `null` value may be provided in GraphQL,
+all of which must raise an error when provided to a Non-Null type.
+
 If the argument of a Non-Null type is not provided, a query error must
 be raised.
 
-If an argument of a Non-Null type is provided with a literal value, it is
-coerced using the input coercion for the wrapped type.
+If an argument of a Non-Null type is provided with the literal value `null`, a
+query error must be raised.
 
 If the argument of a Non-Null is provided with a variable, a query error must be
-raised if the runtime provided value is not provided or is {null} in the
-provided representation (usually JSON). Otherwise, the coerced value is the
-result of using the input coercion for the wrapped type.
-
-Note that `null` is not a value in GraphQL, so a query cannot look like:
+raised if the runtime provided value is not provided or is {null}. Otherwise,
+the coerced value is the result of using the input coercion for the wrapped type.
 
 ```!graphql
 {
-  field(arg: null)
+  fieldWithNonNullArg(nonNullArg: null)
 }
 ```
 
-to indicate that the argument is {null}. Instead, an argument would be {null}
-only if it is omitted:
+An omitted argument is not allowed given a non-null input type:
 
-```graphql
+```!graphql
 {
-  field
+  fieldWithNonNullArg
 }
 ```
 
-Or if passed a variable of a nullable type that at runtime was not provided
-a value:
+A variable of a nullable type that at runtime was not provided a value, or was
+provided an explicit `null` value is not allowed given a non-null input type.
 
 ```graphql
 query withNullableVariable($var: String) {
-  field(arg: $var)
+  fieldWithNonNullArg(nonNullArg: $var)
 }
 ```
+
+Note: the Validation chapter also defines providing a nullable variable type to
+a non-null input type as invalid.
 
 **Non-Null type validation**
 

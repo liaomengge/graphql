@@ -634,6 +634,7 @@ Value[Const] :
   - FloatValue
   - StringValue
   - BooleanValue
+  - NullValue
   - EnumValue
   - ListValue[?Const]
   - ObjectValue[?Const]
@@ -736,6 +737,37 @@ StringCharacter :: \ EscapedCharacter
   * Return the character value of {EscapedCharacter}.
 
 
+### Null Value
+
+NullValue: `null`
+
+Null values are represented as the keyword `null`.
+
+GraphQL has two similar but not-identical ways to represent the lack of a value:
+
+  * Explicitly providing the literal value: `null`.
+  * Implicitly not providing a value at all.
+
+For example, these two field calls are similar, but not identical:
+
+```graphql
+{
+  field(arg: null)
+  field
+}
+```
+
+The first has explictly provided `null` to the argument "arg", while the second
+has implicitly not provided a value to the argument "arg". A GraphQL service may
+interpret the two forms differently, if it is advantageous. For example, to
+represent deleting a field vs not altering a field during a
+mutation, respectively.
+
+Note: The same two methods of representing the lack of a value are possible via
+variables by either providing the a variable value as `null` and not providing
+a variable value at all.
+
+
 ### Enum Value
 
 EnumValue : Name but not `true`, `false` or `null`
@@ -744,9 +776,6 @@ Enum values are represented as unquoted names (ex. `MOBILE_WEB`). It is
 recommended that Enum values be "all caps". Enum values are only used in
 contexts where the precise enumeration type is known. Therefore it's not
 necessary to supply an enumeration type name in the literal.
-
-An enum value cannot be "null" in order to avoid confusion. GraphQL
-does not supply a value literal to represent the concept {null}.
 
 
 ### List Value
